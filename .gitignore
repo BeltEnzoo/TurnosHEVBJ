@@ -1,0 +1,48 @@
+# Entornos y secretos
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Dependencias y builds
+node_modules/
+.pnpm-store/
+dist/
+build/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+
+# Logs y temporales
+*.log
+npm-debug.log*
+pnpm-debug.log*
+tmp/
+temp/
+.cache/
+
+# SO / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Certificados y claves
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Prisma
+prisma/*.db
+prisma/*.db-journal
+
+# Tests / Playwright
+test-results/
+playwright-report/
+blob-report/
+
+# Observabilidad local
+*.sqlite

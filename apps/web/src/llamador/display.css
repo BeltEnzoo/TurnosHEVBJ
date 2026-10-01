@@ -1,0 +1,161 @@
+main.tv-live {
+  max-width: none;
+  width: 100%;
+  margin: 0;
+  min-height: 100vh;
+  padding: 2.5rem 2rem 3rem;
+  background: #1b1416;
+  color: #f4f7f4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  position: relative;
+}
+
+.tv-live h1,
+.tv-kicker {
+  letter-spacing: 0.16em;
+  font-size: clamp(1rem, 2.4vw, 1.6rem);
+  font-weight: 650;
+  opacity: 0.8;
+  margin: 0 0 1.2rem;
+}
+
+.tv-code {
+  font-size: clamp(4rem, 16vw, 9rem);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 0.95;
+  margin: 0.2rem 0 0.6rem;
+}
+
+.tv-direction {
+  font-size: clamp(1.1rem, 2.5vw, 1.8rem);
+  letter-spacing: 0.14em;
+  opacity: 0.75;
+  margin: 0;
+}
+
+.tv-office {
+  font-size: clamp(2rem, 6vw, 4rem);
+  font-weight: 750;
+  margin: 0.4rem 0 0;
+}
+
+.tv-waiting {
+  font-size: clamp(1.4rem, 3vw, 2rem);
+  opacity: 0.75;
+}
+
+.tv-brand {
+  position: absolute;
+  top: 1.2rem;
+  left: 1.4rem;
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  text-align: left;
+}
+
+.tv-brand img {
+  height: 46px;
+  width: auto;
+  background: #fff;
+  border-radius: 10px;
+  padding: 0.25rem 0.45rem;
+}
+
+.tv-brand p {
+  margin: 0;
+  font-size: clamp(1rem, 2vw, 1.4rem);
+  letter-spacing: 0.04em;
+  font-weight: 700;
+}
+
+.tv-status {
+  position: absolute;
+  top: 1.2rem;
+  right: 1.4rem;
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
+  opacity: 0.7;
+}
+
+.tv-status[data-state="offline"] {
+  opacity: 1;
+  color: #f3d48a;
+}
+
+.tv-recent {
+  margin-top: 2.5rem;
+  width: min(40rem, 100%);
+  text-align: left;
+}
+
+.tv-recent h2 {
+  font-size: 0.95rem;
+  letter-spacing: 0.12em;
+  opacity: 0.65;
+  margin: 0 0 0.6rem;
+}
+
+.tv-recent ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.tv-recent li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: clamp(1.1rem, 2.5vw, 1.6rem);
+  font-weight: 700;
+}
+
+.tv-setup {
+  width: min(28rem, 100%);
+  display: grid;
+  gap: 0.8rem;
+  text-align: left;
+}
+
+.tv-setup label {
+  font-size: 1rem;
+}
+
+.tv-setup input {
+  width: 100%;
+  font-size: 1.1rem;
+  padding: 0.7rem 0.8rem;
+}
+
+.tv-setup button,
+.tv-forget {
+  font-size: 1rem;
+  padding: 0.7rem 1rem;
+}
+
+.tv-forget {
+  position: absolute;
+  left: 1.2rem;
+  bottom: 1rem;
+  background: transparent;
+  color: inherit;
+  border: 0;
+  opacity: 0.45;
+}
+
+.tv-error {
+  color: #f0c2c2;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tv-live {
+    scroll-behavior: auto;
+  }
+}

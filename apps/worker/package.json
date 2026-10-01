@@ -1,0 +1,25 @@
+{
+  "name": "@hep/worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "build": "tsc --noEmit",
+    "start": "node --import tsx src/main.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo ok"
+  },
+  "dependencies": {
+    "@hep/config": "workspace:*",
+    "@hep/db": "workspace:*",
+    "bullmq": "^5.58.5",
+    "dotenv": "^16.4.7",
+    "ioredis": "^5.7.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.1",
+    "tsx": "^4.20.5",
+    "typescript": "^5.8.3"
+  }
+}

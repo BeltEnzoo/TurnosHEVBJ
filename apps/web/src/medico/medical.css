@@ -1,0 +1,28 @@
+main.medical {
+  max-width: 40rem;
+}
+
+.medical-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.85rem;
+}
+
+.medical-primary {
+  min-height: 56px;
+  font-size: 1.15rem;
+}
+
+.medical-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.medical-actions button {
+  width: auto;
+  min-height: 48px;
+  padding: 0.7rem 0.9rem;
+}

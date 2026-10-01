@@ -1,0 +1,15 @@
+---
+description: Requisitos y disciplina de fases del sistema de turnos HEP
+alwaysApply: true
+---
+
+# Turnos HEP
+
+- Requisitos en `docs/REQUIREMENTS.md`. No son opcionales.
+- Trabajar **una fase a la vez**. Actual: software hasta Fase 17. Fases 18 a 20 bloqueadas (host, secretos y proveedor oficial de WhatsApp).
+- No implementar panel admin completo, TV, llamador ni WhatsApp oficial hasta su fase.
+- Autorización solo en backend. No confiar en la UI.
+- No secretos en Git. No PII/OTP/tokens en logs.
+- No historia clínica. TV nunca muestra nombre ni DNI.
+- PostgreSQL es la fuente de verdad. No microservicios/K8s/Kafka.
+- Antes de un cambio de arquitectura: detenerse, explicar alternativas y esperar confirmación.

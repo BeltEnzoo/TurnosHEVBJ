@@ -1,0 +1,79 @@
+main.admin-app {
+  max-width: 72rem;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.4rem;
+}
+
+.app-header .brand {
+  margin-bottom: 0;
+}
+
+.admin-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0.4rem 0 1.4rem;
+  padding: 0.4rem;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+}
+
+.admin-nav a {
+  text-decoration: none;
+  color: var(--ink);
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 0.45rem 0.8rem;
+}
+
+.admin-nav a:hover,
+.admin-nav a[aria-current="page"] {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.admin-nav button,
+.admin-app button.inline,
+.admin-app button.ghost {
+  width: auto;
+  min-height: 44px;
+  padding: 0.55rem 0.85rem;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.admin-table th,
+.admin-table td {
+  text-align: left;
+  padding: 0.55rem 0.4rem;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+
+.admin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.admin-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 1rem;
+}
+
+.admin-app input[type="checkbox"] {
+  width: auto;
+  min-height: 0;
+  margin: 0 0.4rem 0 0;
+}

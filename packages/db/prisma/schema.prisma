@@ -1,0 +1,683 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum SessionKind {
+  STAFF
+  PATIENT
+}
+
+model User {
+  id               String    @id @default(uuid()) @db.Uuid
+  email            String    @unique
+  passwordHash     String    @map("password_hash")
+  isActive         Boolean   @default(true) @map("is_active")
+  failedLoginCount Int       @default(0) @map("failed_login_count")
+  lockedUntil      DateTime? @map("locked_until")
+  lastLoginAt      DateTime? @map("last_login_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+  deactivatedAt    DateTime? @map("deactivated_at")
+
+  roles               UserRole[]
+  sessions            Session[]
+  mfa                 MfaTotp?
+  auditLogs           AuditLog[]
+  professional        Professional?
+  appointmentsCreated Appointment[]     @relation("AppointmentCreatedBy")
+  appointmentCalls    AppointmentCall[]
+
+  @@map("users")
+}
+
+model Role {
+  id          String   @id @default(uuid()) @db.Uuid
+  code        String   @unique
+  name        String
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  users       UserRole[]
+  permissions RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id        String   @id @default(uuid()) @db.Uuid
+  code      String   @unique
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  roles RolePermission[]
+
+  @@map("permissions")
+}
+
+model UserRole {
+  userId String @map("user_id") @db.Uuid
+  roleId String @map("role_id") @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@map("user_roles")
+}
+
+model RolePermission {
+  roleId       String     @map("role_id") @db.Uuid
+  permissionId String     @map("permission_id") @db.Uuid
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model Session {
+  id                 String      @id @default(uuid()) @db.Uuid
+  userId             String?     @map("user_id") @db.Uuid
+  tokenHash          String      @unique @map("token_hash")
+  kind               SessionKind
+  expiresAt          DateTime    @map("expires_at")
+  absoluteExpiresAt  DateTime    @map("absolute_expires_at")
+  revokedAt          DateTime?   @map("revoked_at")
+  ipHash             String?     @map("ip_hash")
+  userAgentTruncated String?     @map("user_agent_truncated")
+  mfaSatisfied       Boolean     @default(false) @map("mfa_satisfied")
+  patientId          String?     @map("patient_id") @db.Uuid
+  patientDniHmac     String?     @map("patient_dni_hmac")
+  patientPhoneHmac   String?     @map("patient_phone_hmac")
+  createdAt          DateTime    @default(now()) @map("created_at")
+  lastSeenAt         DateTime    @default(now()) @map("last_seen_at")
+
+  user    User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  patient Patient? @relation(fields: [patientId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([patientId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+model MfaTotp {
+  userId             String    @id @map("user_id") @db.Uuid
+  secretEncrypted    String    @map("secret_encrypted")
+  confirmedAt        DateTime? @map("confirmed_at")
+  recoveryCodeHashes String[]  @map("recovery_code_hashes")
+  createdAt          DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("mfa_totp")
+}
+
+model OtpRequest {
+  id              String    @id @default(uuid()) @db.Uuid
+  purpose         String
+  subjectHmac     String    @map("subject_hmac")
+  destinationHmac String    @map("destination_hmac")
+  codeHash        String    @map("code_hash")
+  expiresAt       DateTime  @map("expires_at")
+  attempts        Int       @default(0)
+  maxAttempts     Int       @map("max_attempts")
+  consumedAt      DateTime? @map("consumed_at")
+  invalidatedAt   DateTime? @map("invalidated_at")
+  ipHash          String?   @map("ip_hash")
+  patientId       String?   @map("patient_id") @db.Uuid
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  patient Patient? @relation(fields: [patientId], references: [id], onDelete: SetNull)
+
+  @@index([subjectHmac, purpose, createdAt])
+  @@index([destinationHmac, createdAt])
+  @@index([patientId])
+  @@map("otp_requests")
+}
+
+model AuditLog {
+  id                 String   @id @default(uuid()) @db.Uuid
+  at                 DateTime @default(now())
+  actorUserId        String?  @map("actor_user_id") @db.Uuid
+  actorType          String   @map("actor_type")
+  action             String
+  entityType         String?  @map("entity_type")
+  entityId           String?  @map("entity_id")
+  ipHash             String?  @map("ip_hash")
+  userAgentTruncated String?  @map("user_agent_truncated")
+  metadata           Json?
+
+  actor User? @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([at])
+  @@index([actorUserId, at])
+  @@index([entityType, entityId])
+  @@map("audit_logs")
+}
+
+model SystemSetting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt @map("updated_at")
+  updatedBy String?  @map("updated_by") @db.Uuid
+
+  @@map("system_settings")
+}
+
+enum DisplayStatus {
+  ONLINE
+  OFFLINE
+  MAINTENANCE
+}
+
+enum SlotStatus {
+  AVAILABLE
+  HELD
+  BOOKED
+  BLOCKED
+  CANCELLED_SLOT
+}
+
+enum SlotKind {
+  REGULAR
+  EXTRA
+}
+
+enum AppointmentStatus {
+  CONFIRMED
+  CALLED
+  IN_PROGRESS
+  COMPLETED
+  NO_SHOW
+  CANCELLED
+  RESCHEDULED
+  EXPIRED
+}
+
+enum AppointmentKind {
+  REGULAR
+  EXTRA
+}
+
+enum ActorType {
+  PATIENT
+  STAFF
+  SYSTEM
+}
+
+enum CancelReasonCode {
+  PATIENT_REQUEST
+  STAFF_REQUEST
+  SCHEDULE_CHANGE
+  OTHER_LOGISTICS
+}
+
+enum HolidayScope {
+  ALL
+  OFFICE
+  PROFESSIONAL
+}
+
+enum WaitlistStatus {
+  ACTIVE
+  FULFILLED
+  CANCELLED
+  EXPIRED
+}
+
+enum WaitlistOfferStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  DECLINED
+}
+
+enum NotificationType {
+  APPOINTMENT_CONFIRMATION
+  APPOINTMENT_REMINDER
+  APPOINTMENT_CANCELLED
+  APPOINTMENT_RESCHEDULED
+  WAITLIST_OFFER
+}
+
+enum NotificationChannel {
+  WHATSAPP
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+  CANCELLED
+}
+
+enum DeliveryStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+enum CallResult {
+  EMITTED
+  DISPLAY_OFFLINE
+}
+
+/// Identidad mínima del paciente. Sin datos clínicos.
+model Patient {
+  id              String    @id @default(uuid()) @db.Uuid
+  givenName       String    @map("given_name")
+  familyName      String    @map("family_name")
+  dni             String    @unique
+  dniHmac         String    @unique @map("dni_hmac")
+  birthDate       DateTime  @map("birth_date") @db.Date
+  phoneE164       String    @map("phone_e164")
+  phoneHmac       String    @map("phone_hmac")
+  phoneVerifiedAt DateTime? @map("phone_verified_at")
+  email           String?
+  whatsappOptIn   Boolean   @default(true) @map("whatsapp_opt_in")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  appointments  Appointment[]
+  otpRequests   OtpRequest[]
+  sessions      Session[]
+  waitlist      WaitlistEntry[]
+  notifications Notification[]
+
+  @@index([phoneHmac])
+  @@map("patients")
+}
+
+model Specialty {
+  id                 String    @id @default(uuid()) @db.Uuid
+  name               String
+  slug               String    @unique
+  defaultSlotMinutes Int       @map("default_slot_minutes")
+  sortOrder          Int       @default(0) @map("sort_order")
+  deactivatedAt      DateTime? @map("deactivated_at")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  professionals ProfessionalSpecialty[]
+  schedules     WeeklySchedule[]
+  exceptions    ScheduleException[]
+  slots         AppointmentSlot[]
+  waitlist      WaitlistEntry[]
+
+  @@map("specialties")
+}
+
+model Professional {
+  id            String    @id @default(uuid()) @db.Uuid
+  userId        String?   @unique @map("user_id") @db.Uuid
+  givenName     String    @map("given_name")
+  familyName    String    @map("family_name")
+  licenseNumber String?   @map("license_number")
+  deactivatedAt DateTime? @map("deactivated_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  user        User?                   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  specialties ProfessionalSpecialty[]
+  offices     ProfessionalOffice[]
+  schedules   WeeklySchedule[]
+  exceptions  ScheduleException[]
+  holidays    Holiday[]
+  blocks      ScheduleBlock[]
+  slots       AppointmentSlot[]
+  waitlist    WaitlistEntry[]
+
+  @@map("professionals")
+}
+
+model ProfessionalSpecialty {
+  professionalId String @map("professional_id") @db.Uuid
+  specialtyId    String @map("specialty_id") @db.Uuid
+
+  professional Professional @relation(fields: [professionalId], references: [id], onDelete: Restrict)
+  specialty    Specialty    @relation(fields: [specialtyId], references: [id], onDelete: Restrict)
+
+  @@id([professionalId, specialtyId])
+  @@map("professional_specialties")
+}
+
+model Office {
+  id            String    @id @default(uuid()) @db.Uuid
+  name          String
+  code          String    @unique
+  locationLabel String?   @map("location_label")
+  deactivatedAt DateTime? @map("deactivated_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  professionals ProfessionalOffice[]
+  displays      DisplayOffice[]
+  schedules     WeeklySchedule[]
+  exceptions    ScheduleException[]
+  holidays      Holiday[]
+  blocks        ScheduleBlock[]
+  slots         AppointmentSlot[]
+
+  @@map("offices")
+}
+
+model ProfessionalOffice {
+  professionalId String @map("professional_id") @db.Uuid
+  officeId       String @map("office_id") @db.Uuid
+
+  professional Professional @relation(fields: [professionalId], references: [id], onDelete: Restrict)
+  office       Office       @relation(fields: [officeId], references: [id], onDelete: Restrict)
+
+  @@id([professionalId, officeId])
+  @@map("professional_offices")
+}
+
+model Display {
+  id                String        @id @default(uuid()) @db.Uuid
+  name              String
+  location          String?
+  status            DisplayStatus @default(OFFLINE)
+  tokenHash         String        @map("token_hash")
+  voiceEnabled      Boolean       @default(true) @map("voice_enabled")
+  voiceLocale       String        @default("es-AR") @map("voice_locale")
+  voiceRate         Float         @default(1) @map("voice_rate")
+  volume            Int           @default(80)
+  repeatCount       Int           @default(1) @map("repeat_count")
+  displayDurationMs Int           @default(8000) @map("display_duration_ms")
+  lastSeenAt        DateTime?     @map("last_seen_at")
+  deactivatedAt     DateTime?     @map("deactivated_at")
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+
+  offices DisplayOffice[]
+  calls   AppointmentCallDisplay[]
+
+  @@map("displays")
+}
+
+model DisplayOffice {
+  displayId String @map("display_id") @db.Uuid
+  officeId  String @map("office_id") @db.Uuid
+
+  display Display @relation(fields: [displayId], references: [id], onDelete: Cascade)
+  office  Office  @relation(fields: [officeId], references: [id], onDelete: Restrict)
+
+  @@id([displayId, officeId])
+  @@map("display_offices")
+}
+
+model WeeklySchedule {
+  id             String    @id @default(uuid()) @db.Uuid
+  professionalId String    @map("professional_id") @db.Uuid
+  specialtyId    String    @map("specialty_id") @db.Uuid
+  officeId       String    @map("office_id") @db.Uuid
+  weekday        Int
+  startTime      DateTime  @map("start_time") @db.Time(0)
+  endTime        DateTime  @map("end_time") @db.Time(0)
+  slotMinutes    Int       @map("slot_minutes")
+  validFrom      DateTime  @map("valid_from") @db.Date
+  validTo        DateTime? @map("valid_to") @db.Date
+  deactivatedAt  DateTime? @map("deactivated_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  professional Professional      @relation(fields: [professionalId], references: [id], onDelete: Restrict)
+  specialty    Specialty         @relation(fields: [specialtyId], references: [id], onDelete: Restrict)
+  office       Office            @relation(fields: [officeId], references: [id], onDelete: Restrict)
+  slots        AppointmentSlot[]
+
+  @@index([professionalId, weekday])
+  @@map("weekly_schedules")
+}
+
+model ScheduleException {
+  id             String    @id @default(uuid()) @db.Uuid
+  date           DateTime  @db.Date
+  professionalId String?   @map("professional_id") @db.Uuid
+  officeId       String?   @map("office_id") @db.Uuid
+  specialtyId    String?   @map("specialty_id") @db.Uuid
+  closed         Boolean   @default(true)
+  startTime      DateTime? @map("start_time") @db.Time(0)
+  endTime        DateTime? @map("end_time") @db.Time(0)
+  reason         String?
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  professional Professional? @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  office       Office?       @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  specialty    Specialty?    @relation(fields: [specialtyId], references: [id], onDelete: Cascade)
+
+  @@index([date])
+  @@map("schedule_exceptions")
+}
+
+model Holiday {
+  id             String       @id @default(uuid()) @db.Uuid
+  date           DateTime     @db.Date
+  name           String
+  appliesTo      HolidayScope @map("applies_to")
+  officeId       String?      @map("office_id") @db.Uuid
+  professionalId String?      @map("professional_id") @db.Uuid
+  createdAt      DateTime     @default(now()) @map("created_at")
+
+  office       Office?       @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  professional Professional? @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+
+  @@index([date])
+  @@map("holidays")
+}
+
+model ScheduleBlock {
+  id             String   @id @default(uuid()) @db.Uuid
+  professionalId String?  @map("professional_id") @db.Uuid
+  officeId       String?  @map("office_id") @db.Uuid
+  startsAt       DateTime @map("starts_at")
+  endsAt         DateTime @map("ends_at")
+  reason         String?
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  professional Professional? @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  office       Office?       @relation(fields: [officeId], references: [id], onDelete: Cascade)
+
+  @@index([startsAt, endsAt])
+  @@map("schedule_blocks")
+}
+
+model AppointmentSlot {
+  id               String     @id @default(uuid()) @db.Uuid
+  professionalId   String     @map("professional_id") @db.Uuid
+  specialtyId      String     @map("specialty_id") @db.Uuid
+  officeId         String     @map("office_id") @db.Uuid
+  startsAt         DateTime   @map("starts_at")
+  endsAt           DateTime   @map("ends_at")
+  status           SlotStatus @default(AVAILABLE)
+  slotKind         SlotKind   @default(REGULAR) @map("slot_kind")
+  holdExpiresAt    DateTime?  @map("hold_expires_at")
+  sourceScheduleId String?    @map("source_schedule_id") @db.Uuid
+  createdAt        DateTime   @default(now()) @map("created_at")
+  updatedAt        DateTime   @updatedAt @map("updated_at")
+
+  professional   Professional    @relation(fields: [professionalId], references: [id], onDelete: Restrict)
+  specialty      Specialty       @relation(fields: [specialtyId], references: [id], onDelete: Restrict)
+  office         Office          @relation(fields: [officeId], references: [id], onDelete: Restrict)
+  sourceSchedule WeeklySchedule? @relation(fields: [sourceScheduleId], references: [id], onDelete: SetNull)
+  appointments   Appointment[]
+  offers         WaitlistOffer[]
+
+  @@unique([professionalId, startsAt, slotKind])
+  @@index([status, startsAt])
+  @@index([professionalId, startsAt])
+  @@map("appointment_slots")
+}
+
+/// Un turno activo por slot: el trigger de la migración copia slot_id a active_slot_key
+/// solo en CONFIRMED, CALLED e IN_PROGRESS. Los estados terminales dejan la clave en null.
+model Appointment {
+  id                String            @id @default(uuid()) @db.Uuid
+  publicCode        String            @unique @map("public_code") @db.VarChar(6)
+  slotId            String            @map("slot_id") @db.Uuid
+  activeSlotKey     String?           @unique @map("active_slot_key") @db.Uuid
+  patientId         String            @map("patient_id") @db.Uuid
+  status            AppointmentStatus
+  kind              AppointmentKind
+  createdByType     ActorType         @map("created_by_type")
+  createdByUserId   String?           @map("created_by_user_id") @db.Uuid
+  cancelledAt       DateTime?         @map("cancelled_at")
+  cancelReasonCode  CancelReasonCode? @map("cancel_reason_code")
+  rescheduledFromId String?           @map("rescheduled_from_id") @db.Uuid
+  rescheduledToId   String?           @map("rescheduled_to_id") @db.Uuid
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+
+  slot              AppointmentSlot            @relation(fields: [slotId], references: [id], onDelete: Restrict)
+  patient           Patient                    @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  createdByUser     User?                      @relation("AppointmentCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  rescheduledFrom   Appointment?               @relation("RescheduledFrom", fields: [rescheduledFromId], references: [id], onDelete: SetNull)
+  rescheduledTo     Appointment?               @relation("RescheduledTo", fields: [rescheduledToId], references: [id], onDelete: SetNull)
+  priorAppointments Appointment[]              @relation("RescheduledFrom")
+  nextAppointments  Appointment[]              @relation("RescheduledTo")
+  statusHistory     AppointmentStatusHistory[]
+  calls             AppointmentCall[]
+  notifications     Notification[]
+
+  @@index([patientId])
+  @@index([status])
+  @@index([slotId])
+  @@map("appointments")
+}
+
+model AppointmentStatusHistory {
+  id            String             @id @default(uuid()) @db.Uuid
+  appointmentId String             @map("appointment_id") @db.Uuid
+  fromStatus    AppointmentStatus? @map("from_status")
+  toStatus      AppointmentStatus  @map("to_status")
+  actorType     ActorType          @map("actor_type")
+  actorId       String?            @map("actor_id")
+  at            DateTime           @default(now())
+
+  appointment Appointment @relation(fields: [appointmentId], references: [id], onDelete: Restrict)
+
+  @@index([appointmentId, at])
+  @@map("appointment_status_history")
+}
+
+model AppointmentCall {
+  id            String     @id @default(uuid()) @db.Uuid
+  appointmentId String     @map("appointment_id") @db.Uuid
+  actorUserId   String?    @map("actor_user_id") @db.Uuid
+  result        CallResult
+  createdAt     DateTime   @default(now()) @map("created_at")
+
+  appointment Appointment              @relation(fields: [appointmentId], references: [id], onDelete: Restrict)
+  actor       User?                    @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+  displays    AppointmentCallDisplay[]
+
+  @@index([appointmentId, createdAt])
+  @@map("appointment_calls")
+}
+
+model AppointmentCallDisplay {
+  callId    String @map("call_id") @db.Uuid
+  displayId String @map("display_id") @db.Uuid
+
+  call    AppointmentCall @relation(fields: [callId], references: [id], onDelete: Cascade)
+  display Display         @relation(fields: [displayId], references: [id], onDelete: Restrict)
+
+  @@id([callId, displayId])
+  @@map("appointment_call_displays")
+}
+
+model WaitlistEntry {
+  id             String         @id @default(uuid()) @db.Uuid
+  patientId      String         @map("patient_id") @db.Uuid
+  specialtyId    String         @map("specialty_id") @db.Uuid
+  professionalId String?        @map("professional_id") @db.Uuid
+  status         WaitlistStatus @default(ACTIVE)
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  patient      Patient         @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  specialty    Specialty       @relation(fields: [specialtyId], references: [id], onDelete: Restrict)
+  professional Professional?   @relation(fields: [professionalId], references: [id], onDelete: SetNull)
+  offers       WaitlistOffer[]
+
+  @@index([status, createdAt])
+  @@map("waitlist_entries")
+}
+
+model WaitlistOffer {
+  id        String              @id @default(uuid()) @db.Uuid
+  entryId   String              @map("entry_id") @db.Uuid
+  slotId    String              @map("slot_id") @db.Uuid
+  expiresAt DateTime            @map("expires_at")
+  status    WaitlistOfferStatus @default(PENDING)
+  createdAt DateTime            @default(now()) @map("created_at")
+
+  entry WaitlistEntry   @relation(fields: [entryId], references: [id], onDelete: Restrict)
+  slot  AppointmentSlot @relation(fields: [slotId], references: [id], onDelete: Restrict)
+
+  @@index([status, expiresAt])
+  @@map("waitlist_offers")
+}
+
+model NotificationTemplate {
+  id        String              @id @default(uuid()) @db.Uuid
+  key       String
+  channel   NotificationChannel
+  locale    String              @default("es-AR")
+  version   Int                 @default(1)
+  body      String
+  updatedBy String?             @map("updated_by") @db.Uuid
+  createdAt DateTime            @default(now()) @map("created_at")
+  updatedAt DateTime            @updatedAt @map("updated_at")
+
+  @@unique([key, channel, locale, version])
+  @@map("notification_templates")
+}
+
+model Notification {
+  id             String              @id @default(uuid()) @db.Uuid
+  type           NotificationType
+  channel        NotificationChannel
+  appointmentId  String?             @map("appointment_id") @db.Uuid
+  patientId      String              @map("patient_id") @db.Uuid
+  status         NotificationStatus  @default(PENDING)
+  scheduledAt    DateTime?           @map("scheduled_at")
+  sentAt         DateTime?           @map("sent_at")
+  failedAt       DateTime?           @map("failed_at")
+  attempts       Int                 @default(0)
+  idempotencyKey String              @unique @map("idempotency_key")
+  params         Json?
+  createdAt      DateTime            @default(now()) @map("created_at")
+
+  appointment Appointment?           @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  patient     Patient                @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  deliveries  NotificationDelivery[]
+
+  @@index([status, scheduledAt])
+  @@map("notifications")
+}
+
+model NotificationDelivery {
+  id                String         @id @default(uuid()) @db.Uuid
+  notificationId    String         @map("notification_id") @db.Uuid
+  provider          String
+  providerMessageId String?        @unique @map("provider_message_id")
+  status            DeliveryStatus @default(QUEUED)
+  errorCode         String?        @map("error_code")
+  createdAt         DateTime       @default(now()) @map("created_at")
+  updatedAt         DateTime       @updatedAt @map("updated_at")
+
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  @@index([notificationId])
+  @@map("notification_deliveries")
+}

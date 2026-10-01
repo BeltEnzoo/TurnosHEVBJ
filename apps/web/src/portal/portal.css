@@ -1,0 +1,32 @@
+.portal {
+  max-width: 40rem;
+}
+
+.portal-nav {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.portal-nav a {
+  color: var(--accent-strong);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.portal-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.portal-choices button {
+  width: auto;
+  min-height: 44px;
+  padding: 0.6rem 0.9rem;
+}
+
+.portal-choices button[aria-pressed="true"] {
+  outline: 3px solid var(--ink);
+}

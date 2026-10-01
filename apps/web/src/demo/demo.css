@@ -1,0 +1,181 @@
+.demo-banner {
+  background: #5c3d16;
+  color: #fff8ee;
+  text-align: center;
+  padding: 0.45rem 1rem;
+  font-size: 0.85rem;
+  letter-spacing: 0.02em;
+}
+
+.demo-page {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 1.5rem 1.25rem 3rem;
+}
+
+.demo-page h1,
+.demo-page h2 {
+  margin-top: 0;
+}
+
+.demo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: 0.85rem;
+}
+
+.demo-choice,
+.demo-table-wrap {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.demo-choice {
+  padding: 1rem 1.1rem;
+  text-align: left;
+  width: 100%;
+  min-height: 56px;
+  color: var(--ink);
+  background: var(--card);
+}
+
+.demo-choice[aria-pressed="true"],
+.demo-choice.selected {
+  outline: 2px solid var(--accent);
+}
+
+.demo-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem 1rem;
+  margin: 0 0 1.25rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.demo-nav a {
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.demo-table-wrap {
+  overflow: auto;
+}
+
+.demo-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.demo-table th,
+.demo-table td {
+  text-align: left;
+  padding: 0.7rem 0.85rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.demo-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.demo-actions button {
+  width: auto;
+  padding: 0.55rem 0.9rem;
+  min-height: 44px;
+}
+
+.demo-actions .primary {
+  min-width: 12rem;
+}
+
+.pill-demo {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 0.15rem 0.45rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+}
+
+.tv-root {
+  min-height: 100vh;
+  margin: 0;
+  padding: 2rem 1.5rem 3rem;
+  background: #102027;
+  color: #f4f7f4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  max-width: none;
+}
+
+.tv-kicker {
+  letter-spacing: 0.18em;
+  font-size: 1rem;
+  opacity: 0.75;
+  margin-bottom: 1rem;
+}
+
+.tv-code {
+  font-size: clamp(3.5rem, 14vw, 8rem);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  margin: 0.2rem 0 1rem;
+}
+
+.tv-office {
+  font-size: clamp(1.6rem, 5vw, 3rem);
+  font-weight: 650;
+}
+
+.tv-waiting {
+  margin-top: 2rem;
+  opacity: 0.7;
+}
+
+.tv-pulse {
+  animation: tvPulse 1.6s ease-in-out 3;
+}
+
+@keyframes tvPulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.72;
+    transform: scale(1.03);
+  }
+}
+
+.tv-offline {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  font-size: 0.85rem;
+  opacity: 0.55;
+}
+
+.hub-links {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.hub-links a {
+  display: block;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  text-decoration: none;
+  background: var(--card);
+}
