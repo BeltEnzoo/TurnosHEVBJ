@@ -110,13 +110,23 @@ button[disabled] {
   cursor: not-allowed;
 }
 
+a.ghost,
 button.ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: auto;
+  min-height: 44px;
+  padding: 0.55rem 0.85rem;
+  border-radius: 12px;
   background: #fff;
   color: var(--accent-strong);
   border: 1px solid var(--line);
+  text-decoration: none;
+  font-weight: 700;
 }
 
+a.ghost:hover,
 button.ghost:hover {
   background: var(--accent-soft);
 }
@@ -132,6 +142,25 @@ button.ghost:hover {
 
 a {
   color: var(--accent-strong);
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.4rem;
+}
+
+.app-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.app-header .brand {
+  margin-bottom: 0;
 }
 
 .brand {

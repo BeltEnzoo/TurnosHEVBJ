@@ -230,14 +230,40 @@ async function replaceProfessionalLinks(
 }
 
 async function assertLinkableUser(db: Db, userId: string, professionalId?: string): Promise<void> {
-  const user = await db.user.findUnique({ where: { id: userId } });
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    include: { roles: { select: { role: { select: { code: true } } } } },
+  });
   if (!user || !user.isActive || user.deactivatedAt) {
     throw new AppError(400, ERROR_CODES.VALIDATION_ERROR, "El usuario no está disponible para vincular.");
+  }
+  if (!user.roles.some((item) => item.role.code === "MEDICO")) {
+    throw new AppError(400, ERROR_CODES.VALIDATION_ERROR, "La cuenta tiene que ser de un médico.");
   }
   const taken = await db.professional.findUnique({ where: { userId } });
   if (taken && taken.id !== professionalId) {
     throw new AppError(409, ERROR_CODES.CONFLICT, "Ese usuario ya está vinculado a otro profesional.");
   }
+}
+
+export async function listLinkableMedicos(db: Db) {
+  const rows = await db.user.findMany({
+    where: {
+      isActive: true,
+      deactivatedAt: null,
+      roles: { some: { role: { code: "MEDICO" } } },
+    },
+    select: { id: true, email: true, professional: { select: { id: true } } },
+    orderBy: { email: "asc" },
+    take: 100,
+  });
+  return {
+    items: rows.map((row) => ({
+      id: row.id,
+      email: row.email,
+      professionalId: row.professional?.id ?? null,
+    })),
+  };
 }
 
 const professionalSelect = {
@@ -399,6 +425,10 @@ export async function createOffice(
       const created = await tx.office.create({
         data: { name: input.name, code: input.code, locationLabel: input.locationLabel },
       });
+      const hall = await tx.display.findFirst({ where: { name: "TV Hall", deactivatedAt: null } });
+      if (hall) {
+        await tx.displayOffice.create({ data: { displayId: hall.id, officeId: created.id } });
+      }
       await writeAudit(tx, {
         actorType: "staff",
         actorUserId: actor.userId,

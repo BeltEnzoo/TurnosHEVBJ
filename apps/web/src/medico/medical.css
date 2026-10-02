@@ -2,6 +2,24 @@ main.medical {
   max-width: 40rem;
 }
 
+.medical .app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.4rem;
+}
+
+.medical .app-header .brand {
+  margin-bottom: 0;
+}
+
+.medical .app-header-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
 .medical-list {
   list-style: none;
   padding: 0;

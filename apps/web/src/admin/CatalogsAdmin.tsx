@@ -13,8 +13,10 @@ type Professional = {
   licenseNumber: string | null;
   specialtyIds: string[];
   officeIds: string[];
+  userId: string | null;
   deactivatedAt: string | null;
 };
+type MedicoAccount = { id: string; email: string; professionalId: string | null };
 
 export function SpecialtiesAdmin() {
   return (
@@ -162,6 +164,8 @@ function ProfessionalBody() {
   const [familyName, setFamilyName] = useState("");
   const [specialtyIds, setSpecialtyIds] = useState<string[]>([]);
   const [officeIds, setOfficeIds] = useState<string[]>([]);
+  const [userId, setUserId] = useState("");
+  const [medicos, setMedicos] = useState<MedicoAccount[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   function load() {
@@ -169,11 +173,13 @@ function ProfessionalBody() {
       adminApi<{ items: Professional[] }>("/api/v1/admin/professionals?limit=100"),
       adminApi<{ items: Specialty[] }>("/api/v1/admin/specialties?limit=100"),
       adminApi<{ items: Office[] }>("/api/v1/admin/offices?limit=100"),
+      adminApi<{ items: MedicoAccount[] }>("/api/v1/admin/professionals/linkable-users"),
     ])
-      .then(([people, specs, rooms]) => {
+      .then(([people, specs, rooms, accounts]) => {
         setItems(people.items);
         setSpecialties(specs.items.filter((item) => !item.deactivatedAt));
         setOffices(rooms.items.filter((item) => !item.deactivatedAt));
+        setMedicos(accounts.items);
       })
       .catch((reason: Error) => setError(reason.message));
   }
@@ -190,12 +196,13 @@ function ProfessionalBody() {
     setFamilyName("");
     setSpecialtyIds([]);
     setOfficeIds([]);
+    setUserId("");
   }
 
   function save(event: FormEvent) {
     event.preventDefault();
     setError(null);
-    const body = JSON.stringify({ givenName, familyName, specialtyIds, officeIds });
+    const body = JSON.stringify({ givenName, familyName, specialtyIds, officeIds, userId: userId || null });
     const request = editingId
       ? adminApi(`/api/v1/admin/professionals/${editingId}`, { method: "PATCH", body })
       : adminApi("/api/v1/admin/professionals", { method: "POST", body });
@@ -214,6 +221,7 @@ function ProfessionalBody() {
     setFamilyName(item.familyName);
     setSpecialtyIds(item.specialtyIds);
     setOfficeIds(item.officeIds);
+    setUserId(item.userId ?? "");
   }
 
   function setActive(item: Professional, active: boolean) {
@@ -263,6 +271,18 @@ function ProfessionalBody() {
             {item.name}
           </label>
         ))}
+        <label htmlFor="userId">Cuenta de médico</label>
+        <select id="userId" value={userId} onChange={(event) => setUserId(event.target.value)}>
+          <option value="">Sin cuenta</option>
+          {medicos
+            .filter((account) => !account.professionalId || account.professionalId === editingId)
+            .map((account) => (
+              <option key={account.id} value={account.id}>
+                {account.email}
+              </option>
+            ))}
+        </select>
+        {medicos.length === 0 ? <p className="muted">Sistemas tiene que crear una cuenta con rol Médico.</p> : null}
         <button type="submit">{editingId ? "Guardar cambios" : "Agregar"}</button>
         {editingId ? (
           <button type="button" className="inline" onClick={clearForm}>
@@ -279,6 +299,8 @@ function ProfessionalBody() {
             {linkedNames(item.specialtyIds, specialties)}
             {" · "}
             {linkedNames(item.officeIds, offices)}
+            {" · "}
+            {medicos.find((account) => account.id === item.userId)?.email ?? "sin cuenta"}
             <button type="button" className="inline" onClick={() => startEdit(item)}>
               Editar
             </button>

@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { staffHome } from "@/admin/role-labels";
 import { Brand } from "@/brand/Brand";
@@ -103,7 +104,12 @@ export default function AdminLoginPage() {
 
   return (
     <main>
-      <Brand />
+      <header className="app-header">
+        <Brand compact />
+        <Link className="ghost" href="/">
+          Inicio
+        </Link>
+      </header>
       <h1>Ingreso del personal</h1>
       <p className="muted">Usá el correo y la contraseña de tu puesto.</p>
       <form className="card" onSubmit={onSubmit}>

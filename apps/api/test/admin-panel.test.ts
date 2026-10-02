@@ -99,13 +99,23 @@ describe("admin panel", () => {
       role: "SUPER_ADMIN",
     });
     const superCookie = await sessionCookie(superAdmin.id);
+    const professional = await prisma.professional.create({
+      data: { givenName: "Fase", familyName: "Siete" },
+    });
     const created = await ctx.app.inject({
       method: "POST",
       url: "/api/v1/admin/users",
       headers: { cookie: superCookie },
-      payload: { email: "medico-fase7@hospital.local", password: "ClaveDeMedico12", role: "MEDICO" },
+      payload: {
+        email: "medico-fase7@hospital.local",
+        password: "ClaveDeMedico12",
+        role: "MEDICO",
+        professionalId: professional.id,
+      },
     });
     expect(created.statusCode).toBe(201);
+    expect(created.json().professional.familyName).toBe("Siete");
+    await prisma.professional.delete({ where: { id: professional.id } });
     const audits = await prisma.auditLog.findMany({ where: { action: "user.create" } });
     expect(JSON.stringify(audits)).not.toContain("ClaveDeMedico12");
 

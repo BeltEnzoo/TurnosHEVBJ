@@ -10,6 +10,12 @@ main.admin-app {
   margin-bottom: 0.4rem;
 }
 
+.app-header-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
 .app-header .brand {
   margin-bottom: 0;
 }

@@ -76,6 +76,7 @@ export function PatientPortal() {
   const [professionalId, setProfessionalId] = useState<string | "any" | null>(null);
   const [slot, setSlot] = useState<Slot | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [horizon, setHorizon] = useState(45);
   const [devCode, setDevCode] = useState<string | null>(null);
   const [otpSent, setOtpSent] = useState(false);
   const [code, setCode] = useState("");
@@ -94,6 +95,9 @@ export function PatientPortal() {
     void api<{ items: Specialty[] }>("/api/v1/specialties?limit=100")
       .then((body) => setSpecialties(body.items))
       .catch((reason: Error) => setError(reason.message));
+    void api<{ days: number }>("/api/v1/booking-horizon")
+      .then((body) => setHorizon(body.days))
+      .catch((reason: Error) => setError(reason.message));
   }, []);
 
   useEffect(() => {
@@ -110,12 +114,12 @@ export function PatientPortal() {
       return;
     }
     const from = civilToday();
-    const to = addDays(from, 14);
+    const to = addDays(from, Math.max(horizon - 1, 0));
     const professional = professionalId === "any" ? "" : `&professionalId=${professionalId}`;
     void api<{ items: Slot[] }>(`/api/v1/availability?specialtyId=${specialtyId}&from=${from}&to=${to}${professional}`)
       .then((body) => setSlots(body.items))
       .catch((reason: Error) => setError(reason.message));
-  }, [professionalId, specialtyId]);
+  }, [horizon, professionalId, specialtyId]);
 
   const dates = useMemo(() => [...new Set(slots.map((item) => civilOf(item.startsAt)))], [slots]);
   const [date, setDate] = useState<string | null>(null);
@@ -141,9 +145,10 @@ export function PatientPortal() {
             {receipt.officeName} ({receipt.officeCode})
           </p>
         </div>
-        <p>
+        <nav className="portal-nav" aria-label="Portal">
+          <Link href="/">Inicio</Link>
           <Link href="/portal/mis-turnos">Ver mis turnos</Link>
-        </p>
+        </nav>
       </main>
     );
   }
@@ -203,7 +208,7 @@ export function PatientPortal() {
       {professionalId ? (
         <>
           <h2>3. Fecha</h2>
-          {dates.length === 0 ? <p className="muted">No hay horarios en los próximos 14 días.</p> : null}
+          {dates.length === 0 ? <p className="muted">No hay horarios en los próximos {horizon} días.</p> : null}
           <div className="portal-choices">
             {dates.map((item) => (
               <button key={item} type="button" aria-pressed={date === item} onClick={() => setDate(item)}>

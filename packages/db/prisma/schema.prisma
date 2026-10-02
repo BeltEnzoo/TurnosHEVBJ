@@ -407,7 +407,7 @@ model DisplayOffice {
   officeId  String @map("office_id") @db.Uuid
 
   display Display @relation(fields: [displayId], references: [id], onDelete: Cascade)
-  office  Office  @relation(fields: [officeId], references: [id], onDelete: Restrict)
+  office  Office  @relation(fields: [officeId], references: [id], onDelete: Cascade)
 
   @@id([displayId, officeId])
   @@map("display_offices")

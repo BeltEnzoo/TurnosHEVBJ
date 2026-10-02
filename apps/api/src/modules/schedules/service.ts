@@ -319,7 +319,7 @@ export async function listAvailability(
       startsAt: { gte: now > rangeStart ? now : rangeStart, lt: rangeEnd },
     },
     orderBy: { startsAt: "asc" },
-    take: 200,
+    take: 3000,
     select: {
       id: true,
       startsAt: true,

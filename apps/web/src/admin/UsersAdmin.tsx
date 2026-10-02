@@ -12,6 +12,16 @@ type UserRow = {
   roles: string[];
   lastLoginAt: string | null;
   failedLoginCount: number;
+  professional: { givenName: string; familyName: string } | null;
+};
+
+type ProfessionalOption = {
+  id: string;
+  givenName: string;
+  familyName: string;
+  specialties: string[];
+  offices: string[];
+  linked: boolean;
 };
 
 const ROLES = ["RECEPCION", "SISTEMAS", "ADMINISTRACION", "MEDICO", "SUPER_ADMIN"];
@@ -29,13 +39,19 @@ function UsersBody() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("RECEPCION");
+  const [professionalId, setProfessionalId] = useState("");
+  const [professionals, setProfessionals] = useState<ProfessionalOption[]>([]);
   const [roles, setRoles] = useState(ROLES.filter((item) => item !== "SUPER_ADMIN"));
   const [error, setError] = useState<string | null>(null);
   const [temporaryPassword, setTemporaryPassword] = useState<string | null>(null);
+  const [meId, setMeId] = useState<string | null>(null);
 
   function load() {
     void adminApi<{ items: UserRow[] }>("/api/v1/admin/users")
       .then((body) => setItems(body.items))
+      .catch((reason: Error) => setError(reason.message));
+    void adminApi<{ items: ProfessionalOption[] }>("/api/v1/admin/users/professionals")
+      .then((body) => setProfessionals(body.items))
       .catch((reason: Error) => setError(reason.message));
   }
 
@@ -43,6 +59,7 @@ function UsersBody() {
 
   useEffect(() => {
     void adminApi<StaffMe>("/api/v1/auth/staff/me").then((me) => {
+      setMeId(me.id);
       if (me.roles.includes("SUPER_ADMIN")) {
         setRoles(ROLES);
       }
@@ -55,11 +72,17 @@ function UsersBody() {
     setTemporaryPassword(null);
     void adminApi("/api/v1/admin/users", {
       method: "POST",
-      body: JSON.stringify({ email, password, role }),
+      body: JSON.stringify({
+        email,
+        password,
+        role,
+        ...(role === "MEDICO" ? { professionalId } : {}),
+      }),
     })
       .then(() => {
         setEmail("");
         setPassword("");
+        setProfessionalId("");
         load();
       })
       .catch((reason: Error) => setError(reason.message));
@@ -79,13 +102,43 @@ function UsersBody() {
         <label htmlFor="password">Contraseña</label>
         <input id="password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} required minLength={12} />
         <label htmlFor="role">Rol</label>
-        <select id="role" value={role} onChange={(event) => setRole(event.target.value)}>
+        <select
+          id="role"
+          value={role}
+          onChange={(event) => {
+            setRole(event.target.value);
+            setProfessionalId("");
+          }}
+        >
           {roles.map((item) => (
             <option key={item} value={item}>
               {roleLabel(item)}
             </option>
           ))}
         </select>
+        {role === "MEDICO" ? (
+          <>
+            <label htmlFor="professionalId">Profesional</label>
+            <select
+              id="professionalId"
+              value={professionalId}
+              onChange={(event) => setProfessionalId(event.target.value)}
+              required
+            >
+              <option value="">Elegir profesional</option>
+              {professionals
+                .filter((item) => !item.linked)
+                .map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.familyName}, {item.givenName}
+                    {item.specialties.length > 0 ? ` · ${item.specialties.join(", ")}` : ""}
+                    {item.offices.length > 0 ? ` · ${item.offices.join(", ")}` : ""}
+                  </option>
+                ))}
+            </select>
+            <p className="muted">La cuenta entra directo a la agenda de ese profesional.</p>
+          </>
+        ) : null}
         <button type="submit">Crear usuario</button>
       </form>
       <table className="admin-table">
@@ -96,7 +149,9 @@ function UsersBody() {
                 {item.email}
                 <br />
                 <span className="muted">
-                  {item.roles.map(roleLabel).join(", ")} · {item.isActive ? "activo" : "inactivo"} · fallos {item.failedLoginCount}
+                  {item.roles.map(roleLabel).join(", ")}
+                  {item.professional ? ` · ${item.professional.familyName}, ${item.professional.givenName}` : ""} ·{" "}
+                  {item.isActive ? "activo" : "inactivo"} · fallos {item.failedLoginCount}
                 </span>
               </td>
               <td>
@@ -137,6 +192,23 @@ function UsersBody() {
                   >
                     Cerrar sesiones
                   </button>
+                  {item.id === meId ? null : (
+                    <button
+                      type="button"
+                      className="inline"
+                      onClick={() => {
+                        if (!window.confirm(`¿Eliminar la cuenta ${item.email}? No se puede deshacer.`)) {
+                          return;
+                        }
+                        setError(null);
+                        void adminApi(`/api/v1/admin/users/${item.id}`, { method: "DELETE" })
+                          .then(load)
+                          .catch((reason: Error) => setError(reason.message));
+                      }}
+                    >
+                      Eliminar
+                    </button>
+                  )}
                 </div>
               </td>
             </tr>

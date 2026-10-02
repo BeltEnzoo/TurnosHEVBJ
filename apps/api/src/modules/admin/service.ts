@@ -1,6 +1,6 @@
 import argon2 from "argon2";
 import { ERROR_CODES, ROLE_CODES, normalizeDni, type RoleCode } from "@hep/shared";
-import type { Prisma, PrismaClient } from "@hep/db";
+import { regenerateAvailableSlots, type Prisma, type PrismaClient } from "@hep/db";
 import { writeAudit } from "../../lib/audit.js";
 import { randomToken } from "../../lib/crypto.js";
 import { AppError } from "../../lib/errors.js";
@@ -142,6 +142,9 @@ export async function updateSettings(
       update: { value: values[key] as Prisma.InputJsonValue, updatedBy: actor.userId },
     });
   }
+  if (values.booking_horizon_days !== undefined) {
+    await regenerateAvailableSlots(db);
+  }
   await writeAudit(db, {
     actorType: "STAFF",
     actorUserId: actor.userId,
@@ -163,6 +166,7 @@ const userSelect = {
   lastLoginAt: true,
   deactivatedAt: true,
   roles: { select: { role: { select: { code: true } } } },
+  professional: { select: { givenName: true, familyName: true } },
 } as const;
 
 function presentUser(row: {
@@ -174,6 +178,7 @@ function presentUser(row: {
   lastLoginAt: Date | null;
   deactivatedAt: Date | null;
   roles: { role: { code: string } }[];
+  professional: { givenName: string; familyName: string } | null;
 }) {
   return {
     id: row.id,
@@ -184,6 +189,33 @@ function presentUser(row: {
     lastLoginAt: row.lastLoginAt,
     deactivatedAt: row.deactivatedAt,
     roles: row.roles.map((item) => item.role.code),
+    professional: row.professional,
+  };
+}
+
+export async function listProfessionalsForAccounts(db: PrismaClient) {
+  const rows = await db.professional.findMany({
+    where: { deactivatedAt: null },
+    orderBy: [{ familyName: "asc" }, { givenName: "asc" }],
+    take: 100,
+    select: {
+      id: true,
+      givenName: true,
+      familyName: true,
+      userId: true,
+      specialties: { select: { specialty: { select: { name: true } } } },
+      offices: { select: { office: { select: { code: true } } } },
+    },
+  });
+  return {
+    items: rows.map((row) => ({
+      id: row.id,
+      givenName: row.givenName,
+      familyName: row.familyName,
+      specialties: row.specialties.map((item) => item.specialty.name),
+      offices: row.offices.map((item) => item.office.code),
+      linked: row.userId !== null,
+    })),
   };
 }
 
@@ -198,31 +230,60 @@ export async function listUsers(db: PrismaClient) {
 
 export async function createStaffUser(
   db: PrismaClient,
-  input: { email: string; password: string; role: RoleCode },
+  input: { email: string; password: string; role: RoleCode; professionalId?: string },
   actor: StaffActor,
 ) {
   assertCanTouchRole(actor, input.role);
+  if (input.role === "MEDICO" && !input.professionalId) {
+    throw new AppError(400, ERROR_CODES.VALIDATION_ERROR, "Elegí el profesional de esa cuenta.");
+  }
+  if (input.role !== "MEDICO" && input.professionalId) {
+    throw new AppError(400, ERROR_CODES.VALIDATION_ERROR, "Solo una cuenta de médico se vincula a un profesional.");
+  }
   const email = input.email.trim().toLowerCase();
   const passwordHash = await argon2.hash(input.password, { type: argon2.argon2id });
   try {
-    const user = await db.user.create({
-      data: { email, passwordHash, isActive: true },
+    const created = await db.$transaction(async (tx) => {
+      if (input.professionalId) {
+        const professional = await tx.professional.findUnique({ where: { id: input.professionalId } });
+        if (!professional || professional.deactivatedAt) {
+          throw new AppError(400, ERROR_CODES.VALIDATION_ERROR, "Ese profesional no está disponible.");
+        }
+        if (professional.userId) {
+          throw new AppError(409, ERROR_CODES.CONFLICT, "Ese profesional ya tiene una cuenta.");
+        }
+      }
+      const user = await tx.user.create({
+        data: { email, passwordHash, isActive: true },
+      });
+      const role = await tx.role.findUniqueOrThrow({ where: { code: input.role } });
+      await tx.userRole.create({ data: { userId: user.id, roleId: role.id } });
+      if (input.professionalId) {
+        const linked = await tx.professional.updateMany({
+          where: { id: input.professionalId, userId: null, deactivatedAt: null },
+          data: { userId: user.id },
+        });
+        if (linked.count !== 1) {
+          throw new AppError(409, ERROR_CODES.CONFLICT, "Ese profesional ya tiene una cuenta.");
+        }
+      }
+      await writeAudit(tx, {
+        actorType: "STAFF",
+        actorUserId: actor.userId,
+        action: "user.create",
+        entityType: "user",
+        entityId: user.id,
+        ipHash: actor.ipHash,
+        userAgentTruncated: actor.userAgentTruncated,
+        metadata: { role: input.role, professionalId: input.professionalId ?? null },
+      });
+      return tx.user.findUniqueOrThrow({ where: { id: user.id }, select: userSelect });
     });
-    const role = await db.role.findUniqueOrThrow({ where: { code: input.role } });
-    await db.userRole.create({ data: { userId: user.id, roleId: role.id } });
-    await writeAudit(db, {
-      actorType: "STAFF",
-      actorUserId: actor.userId,
-      action: "user.create",
-      entityType: "user",
-      entityId: user.id,
-      ipHash: actor.ipHash,
-      userAgentTruncated: actor.userAgentTruncated,
-      metadata: { role: input.role },
-    });
-    const created = await db.user.findUniqueOrThrow({ where: { id: user.id }, select: userSelect });
     return presentUser(created);
   } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
     if (typeof error === "object" && error !== null && "code" in error && error.code === "P2002") {
       throw new AppError(409, ERROR_CODES.CONFLICT, "Ese correo ya está registrado.");
     }
@@ -289,6 +350,33 @@ export async function updateStaffUser(
   });
   const updated = await loadManagedUser(db, id);
   return presentUser(updated);
+}
+
+export async function deleteStaffUser(db: PrismaClient, id: string, actor: StaffActor) {
+  const user = await loadManagedUser(db, id);
+  if (id === actor.userId) {
+    throw new AppError(403, ERROR_CODES.FORBIDDEN, "No podés eliminar tu propia cuenta.");
+  }
+  if (user.roles.some((item) => item.role.code === "SUPER_ADMIN") && !actor.roles.includes("SUPER_ADMIN")) {
+    throw new AppError(403, ERROR_CODES.FORBIDDEN, "Solo un superusuario puede eliminar esa cuenta.");
+  }
+  for (const item of user.roles) {
+    assertCanTouchRole(actor, item.role.code);
+  }
+  await db.$transaction(async (tx) => {
+    await writeAudit(tx, {
+      actorType: "STAFF",
+      actorUserId: actor.userId,
+      action: "user.delete",
+      entityType: "user",
+      entityId: id,
+      ipHash: actor.ipHash,
+      userAgentTruncated: actor.userAgentTruncated,
+      metadata: { roles: user.roles.map((item) => item.role.code) },
+    });
+    await tx.user.delete({ where: { id } });
+  });
+  return { deleted: true };
 }
 
 export async function resetStaffPassword(db: PrismaClient, id: string, actor: StaffActor) {

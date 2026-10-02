@@ -10,6 +10,7 @@ import {
   createSpecialty,
   listAdminOffices,
   listAdminProfessionals,
+  listLinkableMedicos,
   listAdminSpecialties,
   listPublicProfessionals,
   listPublicSpecialties,
@@ -155,6 +156,11 @@ export async function registerCatalogRoutes(app: FastifyInstance): Promise<void>
     const params = idParam.parse(request.params);
     const body = specialtyPatch.parse(request.body);
     return updateSpecialty(app.prisma, params.id, body, who);
+  });
+
+  app.get("/api/v1/admin/professionals/linkable-users", async (request) => {
+    await actor(request);
+    return listLinkableMedicos(app.prisma);
   });
 
   app.get("/api/v1/admin/professionals", async (request) => {

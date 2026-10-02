@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { adminApi, civilToday, hourOf } from "@/admin/api";
 import { Brand } from "@/brand/Brand";
@@ -49,6 +50,11 @@ export function MedicalAgenda() {
     load(date);
   }, [date]);
 
+  async function logout() {
+    await fetch("/api/v1/auth/staff/logout", { method: "POST", credentials: "include" });
+    router.replace("/");
+  }
+
   async function act(id: string, action: "call" | "recall" | "in-progress" | "complete" | "no-show") {
     if (action === "no-show" && !window.confirm("¿Marcar ausente?")) {
       return;
@@ -64,7 +70,17 @@ export function MedicalAgenda() {
 
   return (
     <main className="medical">
-      <Brand />
+      <header className="app-header">
+        <Brand compact />
+        <div className="app-header-actions">
+          <Link className="ghost" href="/">
+            Inicio
+          </Link>
+          <button type="button" className="ghost" onClick={() => void logout()}>
+            Salir
+          </button>
+        </div>
+      </header>
       <h1>Agenda del día</h1>
       {name ? <p>{name}</p> : null}
       <label htmlFor="date">Fecha</label>

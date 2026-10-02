@@ -8,10 +8,12 @@ import { consumeRateLimit } from "../../lib/rate-limit.js";
 import { loadStaffSession, requireAnyPermission, requirePermission, requireStaff } from "../auth/session.js";
 import {
   createStaffUser,
+  deleteStaffUser,
   appointmentSummary,
   listAudit,
   listNotifications,
   listSettings,
+  listProfessionalsForAccounts,
   listUsers,
   resetStaffPassword,
   revokeUserSessions,
@@ -75,6 +77,11 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
     return listUsers(app.prisma);
   });
 
+  app.get("/api/v1/admin/users/professionals", async (request) => {
+    await actor(request, PERMISSIONS.USERS_MANAGE);
+    return listProfessionalsForAccounts(app.prisma);
+  });
+
   app.post("/api/v1/admin/users", async (request, reply) => {
     const who = await actor(request, PERMISSIONS.USERS_MANAGE);
     const body = z
@@ -82,9 +89,14 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
         email: z.string().trim().email().max(120),
         password: z.string().min(12).max(200),
         role: roleSchema,
+        professionalId: z.string().uuid().optional(),
       })
       .parse(request.body);
-    const created = await createStaffUser(app.prisma, { ...body, role: body.role as RoleCode }, who);
+    const created = await createStaffUser(
+      app.prisma,
+      { ...body, role: body.role as RoleCode, professionalId: body.professionalId },
+      who,
+    );
     return reply.code(201).send(created);
   });
 
@@ -104,6 +116,12 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
       { isActive: body.isActive, role: body.role as RoleCode | undefined },
       who,
     );
+  });
+
+  app.delete("/api/v1/admin/users/:id", async (request) => {
+    const who = await actor(request, PERMISSIONS.USERS_MANAGE);
+    const params = z.object({ id: z.string().uuid() }).parse(request.params);
+    return deleteStaffUser(app.prisma, params.id, who);
   });
 
   app.post("/api/v1/admin/users/:id/reset-password", async (request) => {

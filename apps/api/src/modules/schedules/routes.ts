@@ -95,10 +95,18 @@ export async function registerScheduleRoutes(app: FastifyInstance): Promise<void
   app.get("/api/v1/availability", async (request) => {
     await consumeRateLimit(app.redis, `rl:availability:ip:${request.ip}`, 120, 60);
     const query = availabilityQuery.parse(request.query);
-    if (spanDays(query.from, query.to) > 45) {
-      throw new AppError(400, ERROR_CODES.VALIDATION_ERROR, "El rango máximo es de 45 días.");
+    if (spanDays(query.from, query.to) > 89) {
+      throw new AppError(400, ERROR_CODES.VALIDATION_ERROR, "El rango máximo es de 90 días.");
     }
     return listAvailability(app.prisma, query);
+  });
+
+  app.get("/api/v1/booking-horizon", async (request) => {
+    await consumeRateLimit(app.redis, `rl:availability:ip:${request.ip}`, 120, 60);
+    const row = await app.prisma.systemSetting.findUnique({ where: { key: "booking_horizon_days" } });
+    const raw = row?.value;
+    const days = typeof raw === "number" && Number.isInteger(raw) && raw >= 1 && raw <= 90 ? raw : 45;
+    return { days };
   });
 
   app.get("/api/v1/admin/schedules", async (request) => {

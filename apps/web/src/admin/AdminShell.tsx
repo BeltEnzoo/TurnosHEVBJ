@@ -78,9 +78,14 @@ export function AdminShell({
     <main className="admin-app">
       <header className="app-header">
         <Brand compact />
-        <button type="button" className="ghost" onClick={() => void logout()}>
-          Salir
-        </button>
+        <div className="app-header-actions">
+          <Link className="ghost" href="/">
+            Inicio
+          </Link>
+          <button type="button" className="ghost" onClick={() => void logout()}>
+            Salir
+          </button>
+        </div>
       </header>
       <nav className="admin-nav" aria-label="Panel">
         {links.map((item) => {

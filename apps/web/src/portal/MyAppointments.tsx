@@ -152,6 +152,7 @@ export function MyAppointments() {
     <main className="portal">
       <Brand />
       <nav className="portal-nav" aria-label="Portal">
+        <Link href="/">Inicio</Link>
         <Link href="/portal">Sacar turno</Link>
       </nav>
       <h1>Mis turnos</h1>

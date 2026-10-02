@@ -232,17 +232,15 @@ async function seedFictionalCatalog(sessionSecret: string): Promise<void> {
 
   const hall = await prisma.display.findFirstOrThrow({ where: { name: "TV Hall" } });
   const guardia = await prisma.display.findFirstOrThrow({ where: { name: "TV Guardia" } });
-  const c1 = await prisma.office.findUniqueOrThrow({ where: { code: "C1" } });
-  const c2 = await prisma.office.findUniqueOrThrow({ where: { code: "C2" } });
-  const c3 = await prisma.office.findUniqueOrThrow({ where: { code: "C3" } });
-  for (const pair of [
-    [hall.id, c1.id],
-    [hall.id, c2.id],
-    [guardia.id, c3.id],
-  ] as const) {
+  await prisma.displayOffice.deleteMany({ where: { displayId: guardia.id } });
+  const waitingRoomOffices = await prisma.office.findMany({
+    where: { deactivatedAt: null },
+    select: { id: true },
+  });
+  for (const office of waitingRoomOffices) {
     await prisma.displayOffice.upsert({
-      where: { displayId_officeId: { displayId: pair[0], officeId: pair[1] } },
-      create: { displayId: pair[0], officeId: pair[1] },
+      where: { displayId_officeId: { displayId: hall.id, officeId: office.id } },
+      create: { displayId: hall.id, officeId: office.id },
       update: {},
     });
   }
